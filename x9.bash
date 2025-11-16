@@ -45,7 +45,7 @@ x9-session() {
 	local session_path="$(ls "${X9_SESSION_ROOT}/${2}"_* 2> /dev/null | head -1)"
 
 	if ! [[ "$1" =~ ^(print|play)$ ]] || [ -z "$2" ] || ! [ -r "$session_path" ]; then
-		echo 'Usage: x9-print-session [print|play] [session-id]'
+		echo 'Usage: x9-session [print|play] [session-id]'
 		return 1
 	fi
 
