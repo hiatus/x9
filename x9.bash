@@ -63,6 +63,36 @@ x9-session() {
 	rm -rf "$tmp_dir"
 }
 
+__x9_get_network_interface_cidr() {
+	ipv4_cidr="$(ip -o -4 address show dev "$iface" 2> /dev/null | awk '{print $4}')"
+	[ -n "$ipv4_cidr" ] && echo "$ipv4_cidr" && return 0 || return 1
+}
+
+__x9_get_network_interface() {
+	# Prefer the interface that owns the default route
+	iface=$(
+		ip -4 route list default 0.0.0.0/0 2>/dev/null |
+        	awk 'NR==1 { for (i = 1; i <= NF; i++) if ($i == "dev") { print $(i+1); exit } }'
+	)
+
+	# If there is no default route, fall back to the first "sane" global interface that has an
+	# IPv4 address
+	if [ -z $iface ]; then
+		for i in /sys/class/net/!(lo|docker*|veth*|virbr*|br-*|vmnet*|zt*); do
+			__x9_get_network_interface_cidr "$i" || continue
+
+			iface="$i"
+			break
+		done
+	fi
+
+	# If there is still no interface, go for the loopback interface
+	[ -z "$iface" ] && iface="$(ip -o link show | awk '$3 ~ /LOOPBACK/ {print $2}' | tr -d ':')"
+
+	# Return the interface
+	[ -n "$iface" ] && echo "$iface" && return 0 || return 1
+}
+
 # Hook PROMPT_COMMAND
 __x9_hook() {
 	local ret=$?
@@ -78,11 +108,8 @@ __x9_hook() {
 	# If last command is the same, avoid logging twice
 	[ "$lc_line" == "$llc_line" ] && return
 
-	# Get current IPv4 address with netmask
-	for iface in $(ls /sys/class/net); do
-		ipv4_cidr="$(ip -o -4 address show dev "$iface" 2> /dev/null | awk '{print $4}')"
-		[ -n "$ipv4_cidr" ] && break
-	done
+	iface="$(__x9_get_network_interface)"
+	ipv4_cidr="$(__x9_get_network_interface_cidr)"
 
 	query="INSERT INTO command (session_id, start_date, end_date, hostname, ipv4_cidr, username, cwd, command_line, return_code) VALUES ('${X9_SESSION_ID}', '${lc_date}', '$(date -Iseconds)', '$(hostnamectl hostname)', '${ipv4_cidr}', '${USER}', '${PWD}', '${lc_line//\'/\'\'}', ${ret})"
 
