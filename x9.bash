@@ -102,20 +102,7 @@ if [ -n "$PROMPT_COMMAND" ]; then
 fi
 
 export X9_DATABASE="${HOME}/.local/share/x9/x9.db"
-readonly X9_DATABASE
-
 export X9_SESSION_ROOT="${HOME}/.local/share/x9/session"
-readonly X9_SESSION_ROOT
-
-# Disable session logging when the `X9_NO_SESSION` environment variable is set
-if [ -n "$X9_NO_SESSION" ]; then
-	export X9_SESSION_ID=
-	readonly X9_SESSION_ID
-	return
-elif [ -z $X9_SESSION_ID ]; then
-	export X9_SESSION_ID="$(uuidgen -r)"
-	readonly X9_SESSION_ID
-fi
 
 if ! [ -r "$X9_DATABASE" ]; then
 	if ! mkdir -p "$(dirname "$X9_DATABASE")"; then
@@ -135,9 +122,18 @@ if ! mkdir -p "$X9_SESSION_ROOT" 2> /dev/null; then
 	return
 fi
 
-readonly X9_SESSION_ID
+# Disable session logging when the `X9_NO_SESSION` environment variable is set
+if [ -n "$X9_NO_SESSION" ]; then
+	export X9_SESSION_ID=
+	readonly X9_SESSION_ID
+	return
+elif [ -z $X9_SESSION_ID ]; then
+	export X9_SESSION_ID="$(uuidgen -r)"
+fi
+
 readonly X9_DATABASE
 readonly X9_SESSION_ROOT
+readonly X9_SESSION_ID
 
 # If we are already inside X9's script session, prevent screen clearing and return (this will also
 # affect other script sessions)
