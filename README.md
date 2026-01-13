@@ -1,6 +1,6 @@
 # X9
 
-X9 is a simple system for logging commands with contextual information and raw terminal sessions using `script` and a `sqlite3` database. It works by hooking `PROMPT_COMMAND` with a logging handler. X9 will create a directory at `${HOME}/.local/share/x9` containing a SQLite database called `x9.db` as well as a directory called `session` for storing script sessions along with their timing information in compressed tar archives.
+X9 is a simple system for logging commands with contextual information and raw terminal sessions using `script` and an `sqlite3` database. It works by hooking `PROMPT_COMMAND` with a logging handler. X9 will create a directory at `${HOME}/.local/share/x9` containing an SQLite database called `x9.db` as well as a directory called `session` for storing script sessions along with their timing information in compressed tar archives.
 
 Note that this solution is not meant for secure auditing; that would be much better achieved by using something like `auditd`. The purpose of this is to be a simple solution for situations where we need to store detailed contextual information along with executed commands and full terminal sessions.
 
@@ -31,11 +31,13 @@ The `session-id` can be then used to review the session on which the command occ
 }
 ```
 
-## Installation
+## Installation and Usage
 
 The following dependencies must be installed: `script`, `jq`, `sqlite3` and `uuidgen`.
 
 To use X9, simply source `x9.bash` inside `~/.bashrc`. Note, though, that because X9 will enter a script session and call `exit` afterwards, importing `x9.bash` should be the last statement on `~/.bashrc`, as everything after it will be ignored, given that the shell will simply exit after the script session started by X9 logs out.
+
+To disable saving terminal sessions and simply log commands, set the `X9_NO_SESSION` environment variable before loading `x9.bash` in `~/.bashrc`. This will still log all commands executed (without an associated session), but no `script` session will be entered or saved. This can be very useful when only simple logging is desired.
 
 ## Helper Functions
 

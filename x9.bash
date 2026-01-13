@@ -7,30 +7,6 @@ fi
 
 tty | grep -q -E '^/dev/tty[0-9]+$' && return
 
-if [ -z $X9_SESSION_ID ]; then
-	export X9_SESSION_ID="$(uuidgen -r)"
-	export X9_DATABASE="${HOME}/.local/share/x9/x9.db"
-	export X9_SESSION_ROOT="${HOME}/.local/share/x9/session"
-fi
-
-if ! [ -r "$X9_DATABASE" ]; then
-	if ! mkdir -p "$(dirname "$X9_DATABASE")"; then
-		unset X9_SESSION_ID X9_DATABASE X9_SESSION_ROOT
-		return
-	fi
-
-	if ! sqlite3 "$X9_DATABASE" 'CREATE TABLE session (session_id TEXT PRIMARY KEY, start_date TEXT, end_date TEXT); CREATE TABLE command (session_id TEXT, start_date TEXT, end_date TEXT, hostname TEXT, ipv4_cidr TEXT, username TEXT, cwd TEXT, command_line TEXT, return_code INTEGER);'; then
-		unset X9_SESSION_ID X9_DATABASE X9_SESSION_ROOT
-		return
-	fi
-fi
-
-if ! mkdir -p "$X9_SESSION_ROOT" 2> /dev/null; then
-	echo -e "Failed to start X9 session: failed to create log directory at ${wd}\n"
-	unset X9_SESSION_ID X9_DATABASE X9_SESSION_ROOT
-	return
-fi
-
 x9-find-commands() {
 	local query="SELECT * FROM command WHERE command_line LIKE '%${1}%';"
 	sqlite3 -json "$X9_DATABASE" "$query" | jq .
@@ -98,7 +74,7 @@ __x9_hook() {
 	local ret=$?
 
 	[ -z "$HISTFILE" ] && return
-	[[ -n $X9_SESSION_ID  && -r "$X9_DATABASE" ]] || return
+	[[ -v X9_SESSION_ID && -r "$X9_DATABASE" ]] || return
 
 	# Get last command information
 	lc_info=($(HISTTIMEFORMAT='%s ' history 1 | sed 's/^[ ]*[0-9]\+[ ]*//'))
@@ -121,7 +97,47 @@ __x9_hook() {
 	return $ret
 }
 
-[ -n "$PROMPT_COMMAND" ] && PROMPT_COMMAND="__x9_hook; ${PROMPT_COMMAND}" || PROMPT_COMMAND=__x9_hook
+if [ -n "$PROMPT_COMMAND" ]; then
+	PROMPT_COMMAND="__x9_hook; ${PROMPT_COMMAND}" || PROMPT_COMMAND='__x9_hook'
+fi
+
+export X9_DATABASE="${HOME}/.local/share/x9/x9.db"
+readonly X9_DATABASE
+
+export X9_SESSION_ROOT="${HOME}/.local/share/x9/session"
+readonly X9_SESSION_ROOT
+
+# Disable session logging when the `X9_NO_SESSION` environment variable is set
+if [ -n "$X9_NO_SESSION" ]; then
+	export X9_SESSION_ID=
+	readonly X9_SESSION_ID
+	return
+elif [ -z $X9_SESSION_ID ]; then
+	export X9_SESSION_ID="$(uuidgen -r)"
+	readonly X9_SESSION_ID
+fi
+
+if ! [ -r "$X9_DATABASE" ]; then
+	if ! mkdir -p "$(dirname "$X9_DATABASE")"; then
+		unset X9_SESSION_ID X9_DATABASE X9_SESSION_ROOT
+		return
+	fi
+
+	if ! sqlite3 "$X9_DATABASE" 'CREATE TABLE session (session_id TEXT PRIMARY KEY, start_date TEXT, end_date TEXT); CREATE TABLE command (session_id TEXT, start_date TEXT, end_date TEXT, hostname TEXT, ipv4_cidr TEXT, username TEXT, cwd TEXT, command_line TEXT, return_code INTEGER);'; then
+		unset X9_SESSION_ID X9_DATABASE X9_SESSION_ROOT
+		return
+	fi
+fi
+
+if ! mkdir -p "$X9_SESSION_ROOT" 2> /dev/null; then
+	echo -e "Failed to start X9 session: failed to create log directory at ${wd}\n"
+	unset X9_SESSION_ID X9_DATABASE X9_SESSION_ROOT
+	return
+fi
+
+readonly X9_SESSION_ID
+readonly X9_DATABASE
+readonly X9_SESSION_ROOT
 
 # If we are already inside X9's script session, prevent screen clearing and return (this will also
 # affect other script sessions)
