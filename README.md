@@ -35,14 +35,16 @@ The `session-id` can be then used to review the session on which the command occ
 
 The following dependencies must be installed: `script`, `jq`, `sqlite3` and `uuidgen`.
 
-To use X9, simply source `x9.bash` inside `~/.bashrc`. Note, though, that because X9 will enter a script session and call `exit` afterwards, importing `x9.bash` should be the last statement on `~/.bashrc`, as everything after it will be ignored, given that the shell will simply exit after the script session started by X9 logs out.
+To use X9, simply source `x9.bash` inside the Bash session; the database `x9.db` and the session folder `session/` will be initialized at `~/.local/share/x9` automatically.
 
 To disable saving terminal sessions and simply log commands, set the `X9_NO_SESSION` environment variable before loading `x9.bash` in `~/.bashrc`. This will still log all commands executed (without an associated session), but no `script` session will be entered or saved. This can be very useful when only simple logging is desired.
+
+**Note**: when `X9_NO_SESSION` is not set, X9 enters a `script` session and exits afterwards, which means nothing gets executed after the point at which `x9.bash` is sourced by Bash (as the shell simply exits). That doesn't apply when `X9_NO_SESSION` is set, as X9 just initializes and returns from `x9.bash`.
 
 ## Helper Functions
 
 Some helpers are defined in `x9.bash` to facilitate searching through the database and viewing recorded sessions more easily:
 
-- `x9-find-command [search-term]`: print the JSON of the command objects on the database whose `command_line` field contain `search-term`.
-- `x9-find-session [substring-of-session-id]`: print the JSON of the session objects on the database whose `session-id` contains `substring-of-session-id`.
-- `x9-session [print|play] [session-id]`: given a `session-id`, wither `print` the session contents to the terminal or `play` it back in real time.
+- `x9-find-commands [search-term]`: print a JSON representation of the command objects on the database whose `command_line` field contains `search-term`.
+- `x9-find-sessions [search-term]`: print a JSON representation of the session objects on the database whose `session_id` field contains `search-term`.
+- `x9-session [print|play] [session-id]`: given a `session-id`, either `print` the session's contents to the terminal or `play` it back in real time using the timing data.
